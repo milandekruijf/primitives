@@ -139,7 +139,7 @@ const MENU_NAME = 'MenubarMenu';
 type MenubarMenuContextValue = {
   value: string;
   triggerId: string;
-  triggerRef: React.RefObject<MenubarTriggerElement>;
+  triggerRef: React.RefObject<MenubarTriggerElement | MenubarInputTriggerElement>;
   contentId: string;
   wasKeyboardTriggerOpenRef: React.MutableRefObject<boolean>;
 };
@@ -196,6 +196,98 @@ const MenubarMenu = (props: ScopedProps<MenubarMenuProps>) => {
 MenubarMenu.displayName = MENU_NAME;
 
 /* -------------------------------------------------------------------------------------------------
+ * MenubarInputTrigger
+ * -----------------------------------------------------------------------------------------------*/
+
+const INPUT_TRIGGER_NAME = 'MenubarTriggerInput';
+
+type MenubarInputTriggerElement = React.ElementRef<typeof Primitive.input>;
+type PrimitiveInputProps = React.ComponentPropsWithoutRef<typeof Primitive.input>;
+interface MenubarInputTriggerProps extends PrimitiveInputProps {
+  onInputChange?: (value: string) => void;
+}
+
+const MenubarInputTrigger = React.forwardRef<MenubarInputTriggerElement, MenubarInputTriggerProps>(
+  (props: ScopedProps<MenubarInputTriggerProps>, forwardedRef) => {
+    const { __scopeMenubar, disabled = false, ...triggerProps } = props;
+    const rovingFocusGroupScope = useRovingFocusGroupScope(__scopeMenubar);
+    const menuScope = useMenuScope(__scopeMenubar);
+    const context = useMenubarContext(INPUT_TRIGGER_NAME, __scopeMenubar);
+    const menuContext = useMenubarMenuContext(INPUT_TRIGGER_NAME, __scopeMenubar);
+    const ref = React.useRef<MenubarInputTriggerElement>(null);
+    const composedRefs = useComposedRefs(forwardedRef, ref, menuContext.triggerRef);
+    const [isFocused, setIsFocused] = React.useState(false);
+    const open = context.value === menuContext.value;
+
+    return (
+      <Collection.ItemSlot scope={__scopeMenubar} value={menuContext.value} disabled={disabled}>
+        <RovingFocusGroup.Item
+          asChild
+          {...rovingFocusGroupScope}
+          focusable={!disabled}
+          tabStopId={menuContext.value}
+        >
+          <MenuPrimitive.Anchor asChild {...menuScope}>
+            <Primitive.input
+              type="text"
+              role="combobox"
+              id={menuContext.triggerId}
+              aria-haspopup="menu"
+              aria-expanded={open}
+              aria-controls={open ? menuContext.contentId : undefined}
+              data-highlighted={isFocused ? '' : undefined}
+              data-state={open ? 'open' : 'closed'}
+              data-disabled={disabled ? '' : undefined}
+              disabled={disabled}
+              {...triggerProps}
+              ref={composedRefs as any}
+              onPointerDown={composeEventHandlers(props.onPointerDown, (event) => {
+                console.log('pointer down');
+
+                // only call handler if it's the left button (mousedown gets triggered by all mouse buttons)
+                // but not when the control key is pressed (avoiding MacOS right click)
+                if (!disabled && event.button === 0 && event.ctrlKey === false) {
+                  context.onMenuOpen(menuContext.value);
+                  // prevent trigger focusing when opening
+                  // this allows the content to be given focus without competition
+                  // TODO: if (open) event.preventDefault();
+                }
+              })}
+              onPointerEnter={composeEventHandlers(props.onPointerEnter, () => {
+                console.log('pointer enter');
+
+                const menubarOpen = Boolean(context.value);
+                if (menubarOpen && !open) {
+                  context.onMenuOpen(menuContext.value);
+                  ref.current?.focus();
+                }
+              })}
+              onKeyDown={composeEventHandlers(props.onKeyDown, (event) => {
+                console.log('keydown');
+
+                if (disabled) return;
+                if (['Enter', ' '].includes(event.key)) context.onMenuToggle(menuContext.value);
+                if (event.key === 'ArrowDown') context.onMenuOpen(menuContext.value);
+                // prevent keydown from scrolling window / first focused item to execute
+                // that keydown (inadvertently closing the menu)
+                if (['Enter', ' ', 'ArrowDown'].includes(event.key)) {
+                  menuContext.wasKeyboardTriggerOpenRef.current = true;
+                  // event.preventDefault();
+                }
+              })}
+              onFocus={composeEventHandlers(props.onFocus, () => setIsFocused(true))}
+              onBlur={composeEventHandlers(props.onBlur, () => setIsFocused(false))}
+            />
+          </MenuPrimitive.Anchor>
+        </RovingFocusGroup.Item>
+      </Collection.ItemSlot>
+    );
+  }
+);
+
+MenubarInputTrigger.displayName = INPUT_TRIGGER_NAME;
+
+/* -------------------------------------------------------------------------------------------------
  * MenubarTrigger
  * -----------------------------------------------------------------------------------------------*/
 
@@ -238,7 +330,7 @@ const MenubarTrigger = React.forwardRef<MenubarTriggerElement, MenubarTriggerPro
               data-disabled={disabled ? '' : undefined}
               disabled={disabled}
               {...triggerProps}
-              ref={composedRefs}
+              ref={composedRefs as any}
               onPointerDown={composeEventHandlers(props.onPointerDown, (event) => {
                 // only call handler if it's the left button (mousedown gets triggered by all mouse buttons)
                 // but not when the control key is pressed (avoiding MacOS right click)
