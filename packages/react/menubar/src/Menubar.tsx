@@ -780,6 +780,7 @@ function wrapArray<T>(array: T[], startIndex: number) {
 const Root = Menubar;
 const Menu = MenubarMenu;
 const Trigger = MenubarTrigger;
+const InputTrigger = MenubarInputTrigger;
 const Portal = MenubarPortal;
 const Content = MenubarContent;
 const Group = MenubarGroup;
@@ -801,6 +802,7 @@ export {
   Menubar,
   MenubarMenu,
   MenubarTrigger,
+  MenubarInputTrigger,
   MenubarPortal,
   MenubarContent,
   MenubarGroup,
@@ -819,6 +821,7 @@ export {
   Root,
   Menu,
   Trigger,
+  InputTrigger,
   Portal,
   Content,
   Group,
@@ -838,6 +841,7 @@ export type {
   MenubarProps,
   MenubarMenuProps,
   MenubarTriggerProps,
+  MenubarInputTriggerProps,
   MenubarPortalProps,
   MenubarContentProps,
   MenubarGroupProps,
